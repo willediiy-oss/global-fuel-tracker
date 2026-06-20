@@ -1,0 +1,23 @@
+name: Daily Fuel Price Sync
+on:
+  schedule:
+    - cron: '0 0 * * *'
+  workflow_dispatch:
+jobs:
+  sync-fuel:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install Dependencies
+        run: npm install @supabase/supabase-js axios
+      - name: Execute Live Price Sync
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          FUEL_API_KEY: ${{ secrets.FUEL_API_KEY }}
+        run: node scripts/fetch-fuel-prices.js
