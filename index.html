@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Global Fuel Watch</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0b1220;
+    --surface: #131b2e;
+    --surface-raised: #182238;
+    --border: #232c42;
+    --accent: #f2a93b;
+    --accent-dim: #8a6322;
+    --text-primary: #edeff5;
+    --text-secondary: #8b93a7;
+    --danger: #f2545b;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: var(--bg);
+    color: var(--text-primary);
+    font-family: 'Inter', system-ui, sans-serif;
+    min-height: 100vh;
+  }
+
+  body {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 48px 20px 80px;
+  }
+
+  .wrap {
+    width: 100%;
+    max-width: 640px;
+  }
+
+  header {
+    text-align: center;
+    margin-bottom: 36px;
+  }
+
+  .eyebrow {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin: 0 0 10px;
+  }
+
+  h1 {
+    font-size: clamp(28px, 5vw, 38px);
+    font-weight: 700;
+    margin: 0 0 8px;
+    letter-spacing: -0.01em;
+  }
+
+  .subtitle {
+    color: var(--text-secondary);
+    font-size: 15px;
+    margin: 0;
+  }
+
+  form {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 28px;
+  }
+
+  input[type="text"] {
+    flex: 1;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text-primary);
+    padding: 14px 16px;
+    border-radius: 10px;
+    font-size: 16px;
+    font-family: 'Inter', sans-serif;
+    outline: none;
+    transition: border-color 0.15s ease;
+  }
+
+  input[type="text"]::placeholder {
+    color: var(--text-secondary);
+  }
+
+  input[type="text"]:focus {
+    border-color: var(--accent);
+  }
+
+  button {
+    background: var(--accent);
+    color: #1a1304;
+    border: none;
+    padding: 14px 22px;
+    border-radius: 10px;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    font-family: 'Inter', sans-serif;
+    transition: filter 0.15s ease, transform 0.1s ease;
+  }
+
+  button:hover { filter: brightness(1.08); }
+  button:active { transform: scale(0.98); }
+  button:focus-visible, input:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+
+  button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  .board {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 28px;
+    min-height: 180px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+
+  .board-empty {
+    text-align: center;
+    color: var(--text-secondary);
+    font-size: 14px;
+    line-height: 1.6;
+  }
+
+  .board-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 18px;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 14px;
+  }
+
+  .board-country {
+    font-size: 20px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+  }
+
+  .board-date {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    color: var(--text-secondary);
+  }
+
+  .row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    padding: 10px 0;
+  }
+
+  .row + .row {
+    border-top: 1px solid var(--border);
+  }
+
+  .fuel-label {
+    font-size: 13px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+    font-weight: 600;
+  }
+
+  .price-readout {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 24px;
+    font-weight: 600;
+    color: var(--accent);
+    text-shadow: 0 0 12px rgba(242, 169, 59, 0.35);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .price-unit {
+    font-size: 13px;
+    color: var(--text-secondary);
+    margin-left: 6px;
+  }
+
+  .error {
+    color: var(--danger);
+    text-align: center;
+    font-size: 14px;
+  }
+
+  footer {
+    margin-top: 40px;
+    text-align: center;
+    color: var(--text-secondary);
+    font-size: 12px;
+    line-height: 1.6;
+  }
+
+  footer a {
+    color: var(--accent);
+    text-decoration: none;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    button, input { transition: none; }
+  }
+
+  @media (max-width: 480px) {
+    form { flex-direction: column; }
+  }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <p class="eyebrow">Global Fuel Watch</p>
+      <h1>What's fuel costing today?</h1>
+      <p class="subtitle">Pump prices, refreshed every night.</p>
+    </header>
+
+    <form id="search-form">
+      <input
+        type="text"
+        id="country-input"
+        placeholder="Type a country, e.g. Germany"
+        autocomplete="off"
+        aria-label="Country"
+      />
+      <button type="submit" id="search-btn">Check price</button>
+    </form>
+
+    <div class="board" id="board">
+      <div class="board-empty">
+        Search a country above to see today's gasoline, diesel, and LPG prices.
+      </div>
+    </div>
+
+    <footer>
+      Data covers European countries, US states, and Canada.<br />
+      Built and synced automatically, once a day.
+    </footer>
+  </div>
+
+  <script>
+    const form = document.getElementById('search-form');
+    const input = document.getElementById('country-input');
+    const button = document.getElementById('search-btn');
+    const board = document.getElementById('board');
+
+    const FUEL_LABELS = {
+      gasoline: 'Gasoline',
+      diesel: 'Diesel',
+      lpg: 'LPG',
+      mid_grade: 'Mid-grade',
+      premium: 'Premium',
+      e85: 'E85',
+    };
+
+    function formatDate(isoDate) {
+      try {
+        const d = new Date(isoDate);
+        return d.toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' });
+      } catch {
+        return isoDate;
+      }
+    }
+
+    function renderEmpty(message) {
+      board.innerHTML = `<div class="board-empty">${message}</div>`;
+    }
+
+    function renderError(message) {
+      board.innerHTML = `<div class="error">${message}</div>`;
+    }
+
+    function renderResults(country, rows) {
+      const date = rows[0]?.price_date ? formatDate(rows[0].price_date) : '';
+      const rowsHtml = rows
+        .map((row) => {
+          const label = FUEL_LABELS[row.fuel_type] || row.fuel_type;
+          return `
+            <div class="row">
+              <span class="fuel-label">${label}</span>
+              <span>
+                <span class="price-readout">${Number(row.price).toFixed(3)}</span>
+                <span class="price-unit">${row.currency} / L</span>
+              </span>
+            </div>
+          `;
+        })
+        .join('');
+
+      board.innerHTML = `
+        <div class="board-header">
+          <span class="board-country">${country}</span>
+          <span class="board-date">${date}</span>
+        </div>
+        ${rowsHtml}
+      `;
+    }
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const country = input.value.trim();
+      if (!country) {
+        renderEmpty('Type a country name first, then hit "Check price."');
+        return;
+      }
+
+      button.disabled = true;
+      button.textContent = 'Searching…';
+      renderEmpty('Looking that up…');
+
+      try {
+        const response = await fetch(`/api/public-search?country=${encodeURIComponent(country)}`);
+        const json = await response.json();
+
+        if (!response.ok || !json.success) {
+          renderError(json.error || 'Something went wrong fetching that price.');
+          return;
+        }
+
+        if (!json.data || json.data.length === 0) {
+          renderEmpty(`No data found for "${country}" yet. Try a European country, a US state name, or Canada.`);
+          return;
+        }
+
+        renderResults(json.data[0].country, json.data);
+      } catch (err) {
+        renderError('Could not reach the price service. Try again in a moment.');
+      } finally {
+        button.disabled = false;
+        button.textContent = 'Check price';
+      }
+    });
+  </script>
+</body>
+</html>
