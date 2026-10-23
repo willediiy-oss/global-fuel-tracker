@@ -1,22 +1,16 @@
 /**
  * api/prices.js
- * ---------------------------------------------------------------------------
- * Public-facing fuel price API. Deployed as a Vercel serverless function.
- *
- * Reads from the Supabase `fuel_prices` table (read-only, via the
- * publishable key + RLS policy) and returns clean JSON.
+ * Public-facing fuel price API (Vercel serverless function).
+ * Reads from Supabase `fuel_prices` (read-only via publishable key + RLS).
  *
  * Usage:
- *   GET /api/prices?country=Germany
+ *   GET /api/prices?country=Germany                 -> latest price per fuel
  *   GET /api/prices?country=Germany&fuel_type=diesel
+ *   GET /api/prices?country=Germany&history=true    -> full history (newest first)
  *   GET /api/prices?fuel_type=gasoline&limit=20
  *
- * Required environment variables (set in Vercel project settings):
- *   SUPABASE_URL              - Supabase project URL
- *   SUPABASE_PUBLISHABLE_KEY  - Supabase publishable key (read-only via RLS)
- *   PUBLIC_API_KEY            - for direct/testing access
- *   RAPIDAPI_PROXY_SECRET     - from RapidAPI dashboard (Proxy Secret)
- * ---------------------------------------------------------------------------
+ * Env vars: SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, PUBLIC_API_KEY,
+ *           RAPIDAPI_PROXY_SECRET
  */
 
 'use strict';
@@ -25,12 +19,10 @@ const { createClient } = require('@supabase/supabase-js');
 
 const MAX_LIMIT = 200;
 const DEFAULT_LIMIT = 50;
+const LATEST_WINDOW = 1000; // newest rows to scan when picking the latest per fuel
 
 module.exports = async (req, res) => {
   // --- Auth check ---
-  // Accepts either:
-  // 1. RapidAPI proxy secret (requests coming through RapidAPI marketplace)
-  // 2. Direct x-api-key header (for testing/direct access)
   const rapidApiSecret = req.headers['x-rapidapi-proxy-secret'];
   const directApiKey = req.headers['x-api-key'];
   const validRapidApi = process.env.RAPIDAPI_PROXY_SECRET && rapidApiSecret === process.env.RAPIDAPI_PROXY_SECRET;
@@ -57,7 +49,8 @@ module.exports = async (req, res) => {
   );
 
   try {
-    const { country, fuel_type: fuelType, limit } = req.query || {};
+    const { country, fuel_type: fuelType, limit, history } = req.query || {};
+    const wantHistory = String(history).toLowerCase() === 'true';
 
     let query = supabase
       .from('fuel_prices')
@@ -71,14 +64,30 @@ module.exports = async (req, res) => {
     }
 
     const parsedLimit = Math.min(parseInt(limit, 10) || DEFAULT_LIMIT, MAX_LIMIT);
-    query = query.order('price_date', { ascending: false }).limit(parsedLimit);
+    query = query
+      .order('price_date', { ascending: false })
+      .limit(wantHistory ? parsedLimit : LATEST_WINDOW);
 
-    const { data, error } = await query;
+    const { data: rows, error } = await query;
 
     if (error) {
       console.error('Supabase query error:', error.message);
       res.status(500).json({ success: false, error: error.message });
       return;
+    }
+
+    let data = rows;
+    if (!wantHistory) {
+      // Rows are newest first, so the first one seen per country + fuel is the latest.
+      const seen = new Set();
+      data = rows
+        .filter((r) => {
+          const key = `${r.country}|${r.fuel_type}`;
+          if (seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        })
+        .slice(0, parsedLimit);
     }
 
     res.status(200).json({ success: true, count: data.length, data });
