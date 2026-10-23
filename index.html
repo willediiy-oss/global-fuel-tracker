@@ -249,7 +249,7 @@
       </div>
     </div>
 
-<footer>
+    <footer>
       Data covers European countries, US states, and Canada.<br />
       Built and synced automatically, once a day.
       <br /><br />
@@ -261,6 +261,8 @@
         />
       </a>
     </footer>
+  </div>
+
   <script>
     const form = document.getElementById('search-form');
     const input = document.getElementById('country-input');
@@ -319,6 +321,22 @@
       `;
     }
 
+    // Keep only the newest price per fuel for the best-matching country
+    function latestPerFuel(rows) {
+      const newest = rows.reduce((a, b) => (b.price_date > a.price_date ? b : a));
+      const best = {};
+      for (const row of rows) {
+        if (row.country !== newest.country) continue;
+        const cur = best[row.fuel_type];
+        if (!cur || row.price_date > cur.price_date) best[row.fuel_type] = row;
+      }
+      const order = Object.keys(FUEL_LABELS);
+      const latest = Object.values(best).sort(
+        (a, b) => order.indexOf(a.fuel_type) - order.indexOf(b.fuel_type)
+      );
+      return { country: newest.country, rows: latest };
+    }
+
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
       const country = input.value.trim();
@@ -345,7 +363,8 @@
           return;
         }
 
-        renderResults(json.data[0].country, json.data);
+        const result = latestPerFuel(json.data);
+        renderResults(result.country, result.rows);
       } catch (err) {
         renderError('Could not reach the price service. Try again in a moment.');
       } finally {
@@ -354,6 +373,6 @@
       }
     });
   </script>
-<script defer src="/_vercel/insights/script.js"></script>
+  <script defer src="/_vercel/insights/script.js"></script>
 </body>
 </html>
