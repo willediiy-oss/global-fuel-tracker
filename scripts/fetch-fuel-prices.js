@@ -89,6 +89,30 @@ const axios = require('axios');
 const { createClient } = require('@supabase/supabase-js');
 
 // ---------------------------------------------------------------------------
+// Retry helper  (NEW)
+// Retries on server errors (5xx), rate limits (429) and network/timeout
+// errors. Client errors like 401/403 fail immediately.
+// ---------------------------------------------------------------------------
+
+async function withRetry(fn, tries = 4, delayMs = 5000) {
+  for (let attempt = 1; attempt <= tries; attempt += 1) {
+    try {
+      return await fn();
+    } catch (err) {
+      const status = err.response?.status;
+      const retryable = !status || status >= 500 || status === 429;
+      if (!retryable || attempt === tries) throw err;
+
+      const wait = delayMs * attempt;
+      console.warn(
+        `Fuel API attempt ${attempt}/${tries} failed (${status || err.code || 'network error'}). Retrying in ${wait / 1000}s...`
+      );
+      await new Promise((resolve) => setTimeout(resolve, wait));
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Configuration
 // ---------------------------------------------------------------------------
 
@@ -134,13 +158,16 @@ function initSupabaseClient(config) {
 async function fetchFuelPrices(config) {
   console.log(`Fetching fuel price data from ${config.fuelApiUrl} ...`);
 
-  const response = await axios.get(config.fuelApiUrl, {
-    headers: {
-      Authorization: `${config.fuelAuthScheme} ${config.fuelApiKey}`,
-      Accept: 'application/json',
-    },
-    timeout: 15000,
-  });
+  // CHANGED: the request is now wrapped in withRetry()
+  const response = await withRetry(() =>
+    axios.get(config.fuelApiUrl, {
+      headers: {
+        Authorization: `${config.fuelAuthScheme} ${config.fuelApiKey}`,
+        Accept: 'application/json',
+      },
+      timeout: 15000,
+    })
+  );
 
   if (response.status < 200 || response.status >= 300) {
     throw new Error(`Fuel API returned unexpected status: ${response.status}`);
