@@ -321,11 +321,16 @@
       `;
     }
 
-    // Keep only the newest price per fuel for the best-matching country
-    function latestPerFuel(rows) {
-      const newest = rows.reduce((a, b) => (b.price_date > a.price_date ? b : a));
+    // Keep only the newest price per fuel. Prefer an exact name match
+    // (so "Canada" or "USA" shows the national card), otherwise use the
+    // best-matching place.
+    function latestPerFuel(rows, query) {
+      const q = query.trim().toLowerCase();
+      const exact = rows.filter((r) => r.country.toLowerCase() === q);
+      const pool = exact.length ? exact : rows;
+      const newest = pool.reduce((a, b) => (b.price_date > a.price_date ? b : a));
       const best = {};
-      for (const row of rows) {
+      for (const row of pool) {
         if (row.country !== newest.country) continue;
         const cur = best[row.fuel_type];
         if (!cur || row.price_date > cur.price_date) best[row.fuel_type] = row;
@@ -363,7 +368,7 @@
           return;
         }
 
-        const result = latestPerFuel(json.data);
+        const result = latestPerFuel(json.data, country);
         renderResults(result.country, result.rows);
       } catch (err) {
         renderError('Could not reach the price service. Try again in a moment.');
